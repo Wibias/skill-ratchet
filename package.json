@@ -1,0 +1,31 @@
+{
+  "name": "skill-ratchet",
+  "version": "0.1.0",
+  "description": "Release engineering and regression gates for Agent Skills.",
+  "type": "module",
+  "bin": {
+    "skill-ratchet": "skills/skill-ratchet/scripts/skill-ratchet.mjs"
+  },
+  "scripts": {
+    "test": "node --test tests/*.test.mjs",
+    "validate": "node skills/skill-ratchet/scripts/skill-ratchet.mjs validate --skill-root skills/skill-ratchet",
+    "preflight:self": "node skills/skill-ratchet/scripts/skill-ratchet.mjs preflight --query \"Agent Skill authoring quality gate\" --json"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": [
+    "agent-skills",
+    "llm-evals",
+    "skill-authoring",
+    "regression-testing",
+    "codex",
+    "claude-code"
+  ],
+  "license": "MIT",
+  "files": [
+    "skills/skill-ratchet",
+    "LICENSE",
+    "THIRD_PARTY_NOTICES.md"
+  ]
+}

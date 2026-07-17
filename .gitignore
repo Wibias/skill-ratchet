@@ -1,0 +1,7 @@
+node_modules/
+.npm-cache/
+.python-deps/
+coverage/
+.DS_Store
+*.log
+.skill-ratchet/
