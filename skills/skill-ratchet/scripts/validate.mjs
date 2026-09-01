@@ -35,10 +35,50 @@ function validateCase(row, label, errors, includeAdded = false) {
   const categories = ['config', 'must-trigger', 'must-not-trigger', 'explicit-invocation', 'implicit-invocation', 'routing', 'adversarial', 'regression'];
   if (!categories.includes(row.category)) errors.push(`${label} '${row.id}' has invalid category '${row.category}'`);
   if (!['n/a', 'explicit', 'implicit'].includes(row.invocation)) errors.push(`${label} '${row.id}' has invalid invocation '${row.invocation}'`);
+
+  if ('trials' in row) {
+    if (!Number.isInteger(row.trials) || row.trials < 1) errors.push(`${label} '${row.id}' trials must be a positive integer`);
+    const threshold = row.pass_threshold ?? row.trials;
+    if (!Number.isInteger(threshold) || threshold < 1) errors.push(`${label} '${row.id}' pass_threshold must be a positive integer`);
+    if (Number.isInteger(row.trials) && Number.isInteger(threshold) && threshold > row.trials) errors.push(`${label} '${row.id}' pass_threshold cannot exceed trials`);
+  } else if ('pass_threshold' in row) {
+    errors.push(`${label} '${row.id}' pass_threshold requires trials`);
+  }
 }
 
 function resultMap(rows = []) {
   return new Map(rows.map((row) => [row.id, row]));
+}
+
+function validateTrials(execution, caseRow, slotName, errors) {
+  if (!caseRow?.trials) return;
+  const trials = execution.trials;
+  if (!Array.isArray(trials) || trials.length !== caseRow.trials) {
+    errors.push(`execution '${slotName}' must contain exactly ${caseRow.trials} trials for case '${caseRow.id}'`);
+    return;
+  }
+  const ids = new Set();
+  let passing = 0;
+  for (const [index, trial] of trials.entries()) {
+    if (!trial || typeof trial.id !== 'string' || !trial.id.trim()) errors.push(`execution '${slotName}' trial ${index + 1} lacks an id`);
+    else if (ids.has(trial.id)) errors.push(`execution '${slotName}' has duplicate trial id '${trial.id}'`);
+    else ids.add(trial.id);
+
+    if (!['pass', 'fail', 'blocked'].includes(trial?.result)) errors.push(`execution '${slotName}' trial '${trial?.id || index + 1}' has invalid result '${trial?.result}'`);
+    const assertions = trial?.assertions;
+    if (!Array.isArray(assertions) || !assertions.length) {
+      errors.push(`execution '${slotName}' trial '${trial?.id || index + 1}' requires assertions`);
+      continue;
+    }
+    const order = assertions.map((row) => row.id);
+    if (JSON.stringify(order) !== JSON.stringify(caseRow.assertion_ids)) errors.push(`execution '${slotName}' trial '${trial?.id || index + 1}' used different ordered assertion IDs`);
+    if (trial.result === 'pass') {
+      if (assertions.some((row) => row.result !== 'pass')) errors.push(`execution '${slotName}' passing trial '${trial.id}' has a non-passing assertion`);
+      else passing += 1;
+    }
+  }
+  const threshold = caseRow.pass_threshold ?? caseRow.trials;
+  if (passing < threshold) errors.push(`execution '${slotName}' trial pass threshold not met: ${passing}/${caseRow.trials}, required ${threshold}`);
 }
 
 export async function validateSkill(options) {
@@ -172,6 +212,7 @@ export async function validateSkill(options) {
             const normalized = normalizeSlash(resource);
             if (!opened.some((entry) => entry === normalized || entry.endsWith(`/${normalized}`))) errors.push(`execution '${slotName}' did not open expected resource '${resource}'`);
           }
+          validateTrials(execution, caseRow, slotName, errors);
         }
       }
       if (assertionOrders.length === 2 && JSON.stringify(assertionOrders[0]) !== JSON.stringify(assertionOrders[1])) errors.push('model slots used different ordered assertion IDs');
