@@ -19,12 +19,18 @@ async function completeEvidence(overrides = {}) {
   const cases = (await readFile(path.join(skillRoot, 'tests', 'evals', 'cases.jsonl'), 'utf8'))
     .split(/\r?\n/).filter(Boolean).map(JSON.parse);
   const executionCase = cases.find((row) => row.id === 'E1');
+  const assertionRows = () => executionCase.assertion_ids.map((id) => ({ id, result: 'pass' }));
   const slot = (model) => ({
     model,
     case_id: 'E1',
     files_opened: executionCase.expected_resources,
     unnecessary_loads: [],
-    assertions: executionCase.assertion_ids.map((id) => ({ id, result: 'pass' })),
+    assertions: assertionRows(),
+    trials: Array.from({ length: executionCase.trials || 1 }, (_, index) => ({
+      id: `T${index + 1}`,
+      result: 'pass',
+      assertions: assertionRows(),
+    })),
   });
   return {
     skill: 'skill-ratchet',
@@ -56,6 +62,18 @@ test('complete evidence passes only with two distinct passing models and all cas
   await writeFile(evidencePath, JSON.stringify(await completeEvidence()), 'utf8');
   const result = await validateSkill({ skillRoot, runEvidence: evidencePath });
   assert.equal(result.ok, true, result.errors.join('\n'));
+});
+
+test('repeated execution trials must meet the case pass threshold in both model slots', async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'skill-ratchet-trials-'));
+  const evidence = await completeEvidence();
+  evidence.execution_per_slot.weaker.trials[2].result = 'fail';
+  evidence.execution_per_slot.weaker.trials[2].assertions[0].result = 'fail';
+  const evidencePath = path.join(directory, 'evidence.json');
+  await writeFile(evidencePath, JSON.stringify(evidence), 'utf8');
+  const result = await validateSkill({ skillRoot, runEvidence: evidencePath });
+  assert.equal(result.ok, false);
+  assert.match(result.errors.join('\n'), /weaker.*trial pass threshold/);
 });
 
 test('blocked model and blocked edge cases never complete', async () => {
