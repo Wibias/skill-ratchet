@@ -86,15 +86,19 @@ frontmatter description.
 Follow `references/evaluation-contract.md` exactly:
 
 1. Run D1-D3 and N1-N3 discovery cases, including explicit and implicit use.
-2. Run a real task and assert observable steps, resources, and output.
-3. Fail if unnecessary resources were loaded.
-4. Run A1-A6 without changing their canonical meanings.
-5. Run identical ordered assertion IDs with strong and economical model slots.
-6. On deviation, change the skill and rerun the same prompt and assertions.
-7. Append each newly passing regression and update its lock; never mutate a
+2. Run a real organic task with candidate-visible evaluation labels and hidden rubrics removed.
+3. Grade falsifiable outcomes first; assert process only where the process is part of the contract.
+4. Fail if unnecessary resources were loaded.
+5. Run A1-A6 without changing their canonical meanings.
+6. Run identical ordered assertion IDs with strong and economical model slots.
+7. When a case declares `trials`, require each model slot to meet the same `pass_threshold`.
+8. On deviation, change the skill and rerun the same prompt and assertions.
+9. Append each newly passing regression and update its lock; never mutate a
    retained line.
 
-Never use hidden chain-of-thought as evidence.
+Never use hidden chain-of-thought or candidate self-report as evidence. For a
+`verify-*` target, structural skill validation and live product verification are
+separate requirements; do not round a blocked live surface up to pass.
 
 ## 5. Validate
 
@@ -125,6 +129,7 @@ Classification: REUSE | EXTEND | MERGE | CREATE
 Evidence: <candidate paths and why>
 Discovery: D1-D3 pass; N1-N3 pass
 Execution: <real task>; <assertion IDs>; unnecessary loads: none
+Trials: <single run | passed/required per model slot>
 Adversarial: A1-A6 pass
 Models: strong=<concrete model>; economical=<concrete model>; identical assertions pass
 Regression: <appended case ID and lock>
